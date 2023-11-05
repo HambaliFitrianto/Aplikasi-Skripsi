@@ -1,23 +1,26 @@
 from streamlit_option_menu import option_menu
 import streamlit as st
-import pandas as pd 
-import numpy as np
+import pandas as pd
 import regex as re
 import json
 import nltk
 nltk.download('stopwords')
 nltk.download('punkt')
-from nltk.tokenize import sent_tokenize, word_tokenize
+# from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.corpus import stopwords
 from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 from Sastrawi.StopWordRemover.StopWordRemoverFactory import StopWordRemoverFactory
 from nltk.tokenize import RegexpTokenizer
-from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
-# from sklearn.naive_bayes import MultinomialNB
-import pickle5 as pickle 
-from sklearn.metrics import confusion_matrix, accuracy_score
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+# import pickle5 as pickle 
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 import warnings
+import seaborn as sns
+import matplotlib.pyplot as plt
+# from pickle import dump
+
 warnings.filterwarnings('ignore')
 
 st.set_page_config(
@@ -32,8 +35,9 @@ st.set_page_config(
     }
 )
 st.write("""
-<center><h2 style = "text-align: justify;">Aplikasi Analisis Sentimen Wisata Bukit Jaddih Menggunakan Metode Naive Bayes melalui Ulasan Google Maps</h2></center>
+<center><h2 style = "text-align: justify;">ANALISIS SENTIMEN WISATA API TAK KUNJUNG PADAM MENGGUNAKAN METODE NAIVE BAYES MELALUI ULASAN GOOGLE REVIEW PADA GOOGLE MAPS</h2></center>
 """,unsafe_allow_html=True)
+#st.write("### Dosen Pengampu: Dr. Cucun Very Angkoso, S.T., MT.",unsafe_allow_html=True)
 
 with st.container():
     with st.sidebar:
@@ -48,23 +52,15 @@ with st.container():
                 "nav-link-selected":{"background-color": "#412a7a"}
             }
         )
-        # st.write("""
-        # <div style = "position: fixed; left:50px; bottom: 10px;">
-        #     <center><a href="https://github.com/HanifSantoso05/Aplikasi-Web-Klasifikasi-Penyakit-Anemia"><span><img src="https://cdns.iconmonstr.com/wp-content/releases/preview/2012/240/iconmonstr-github-1.png" width="40px" height="40px"></span></a><a style = "margin-left: 20px;" href="http://hanifsantoso05.github.io/datamining/intro.html"><span><img src="https://friconix.com/png/fi-stluxx-jupyter-notebook.png" width="40px" height="40px"></span></a> <a style = "margin-left: 20px;" href="mailto: hanifsans05@gmail.com"><span><img src="https://cdn-icons-png.flaticon.com/512/60/60543.png" width="40px" height="40px"></span></a></center>
-        # </div> 
-        # """,unsafe_allow_html=True)
 
     if selected == "Home":
         st.write("""<h3 style = "text-align: center;">
-        <img src="https://cdn2.tstatic.net/travel/foto/bank/images/bukit-jaddih-bangkalan-madura.jpg" width="500" height="300">
+        <img src="https://storage.nu.or.id/storage/post/16_9/mid/1605569441.JPG" width="500" height="300">
         </h3>""",unsafe_allow_html=True)
-        # st.write("""
-        # Anemia adalah suatu kondisi di mana Anda kekurangan sel darah merah yang sehat untuk membawa oksigen yang cukup ke jaringan tubuh Anda. Penderita anemia, juga disebut hemoglobin rendah, bisa membuat Anda merasa lelah dan lemah.
-        # """)
 
     elif selected == "Dataset":
         st.write("#### Deskripsi Dataset")
-        st.write(""" <p style = "text-align: justify;">dataset tentang ulasan masyarakat terhadap pariwisata bukit Jaddih dari ulasan google maps. Selanjutnya data ulasan tersebut akan diklasifikasikan ke dalam dua kategori sentimen yaitu negatif dan positif kemudian dilakukan penerapan algoritma Multinomial Naive Bayes untuk mengetahui nilai akurasinya.</p>""",unsafe_allow_html=True)
+        st.write(""" <p style = "text-align: justify;">dataset tentang ulasan masyarakat terhadap pariwisata api tak kunjung padam dari ulasan google maps. Selanjutnya data ulasan tersebut akan diklasifikasikan ke dalam dua kategori sentimen yaitu negatif dan positif kemudian dilakukan penerapan algoritma Multinomial Naive Bayes untuk mengetahui nilai akurasinya.</p>""",unsafe_allow_html=True)
         st.write("#### Preprocessing Dataset")
         st.write(""" <p style = "text-align: justify;">Preprocessing data merupakan proses dalam mengganti teks tidak teratur supaya teratur yang nantinya dapat membantu pada proses pengolahan data.</p>""",unsafe_allow_html=True)
         st.write(""" 
@@ -78,8 +74,8 @@ with st.container():
         </ol> 
         """,unsafe_allow_html=True)
         st.write("#### Dataset")
-        df = pd.read_csv("ulasan_bj_pn.csv")
-        df = df.drop(columns=['nama','sentiment','score'])
+        df = pd.read_csv("dataprep.csv")
+#         df = df.drop(columns=['nama','sentiment','score'])
         st.write(df)
     elif selected == "Implementation":
         #Getting input from user
@@ -146,17 +142,27 @@ with st.container():
             df_tfidfvect = pd.DataFrame(data = tfidf_wm.toarray(),columns = tfidf_tokens)
             
             #Train test split
-            training, test = train_test_split(tfidf_wm,test_size=0.2, random_state=1)#Nilai X training dan Nilai X testing
-            training_label, test_label = train_test_split(sentimen, test_size=0.2, random_state=1)#Nilai Y training dan Nilai Y testing    
+            # Memisahkan data menjadi training set dan test set
+            X_train, X_test, y_train, y_test = train_test_split(tfidf_wm, sentimen, test_size=0.1, random_state=1)
 
             # model
-            with open('modelml.pkl', 'rb') as file:
-                loaded_model = pickle.load(file)
-            clf = loaded_model.fit(training,training_label)
-            y_pred=clf.predict(test)
+            # with open('modelpola.pkl', 'rb') as file:
+            #     loaded_model = pickle.load(file)
+            # clf = loaded_model.fit(X_train,y_train)
+            # y_pred=clf.predict(X_test)
+
+            # Membuat instance objek dari kelas MultinomialNB
+            clf = MultinomialNB()
+
+            # Melatih model menggunakan data pelatihan
+            clf.fit(X_train, y_train)
+
+            # Membuat prediksi menggunakan data testing
+            y_pred = clf.predict(X_test)
 
             #Evaluasi
-            akurasi = accuracy_score(test_label, y_pred)
+            # Menghitung akurasi
+            akurasi = accuracy_score(y_test, y_pred)
 
             # Inputan 
             lower_case_isi,clean_symbols,slang,gabung,stem = prep_input_data(word, slang_dict)
@@ -171,9 +177,27 @@ with st.container():
             st.write(pd.DataFrame([slang],columns=["Slang Word Removing"]))
             st.write(pd.DataFrame([gabung],columns=["Stop Word Removing"]))
             st.write(pd.DataFrame([stem],columns=["Steaming"]))
+            # st.write('Case Folding')
+            # st.write(lower_case_isi)
+            # st.write('Cleaning Simbol')
+            # st.write(clean_symbols)
+            # st.write('Slang Word Removing')
+            # st.write(slang)
+            # st.write('Stop Word Removing')
+            # st.write(gabung)
+            # st.write('Steaming')
+            # st.write(stem)
 
+            # st.subheader('Akurasi')
+            # st.info(akurasi)
+            # Mengubah akurasi menjadi persen dengan 2 desimal
+            akurasi_persen = akurasi * 100
+
+            # Menampilkan akurasi
             st.subheader('Akurasi')
-            st.info(akurasi)
+            st.info(f"{akurasi_persen:.2f}%")
+
+            
 
             st.subheader('Prediksi')
             if y_preds == "positive":
@@ -181,9 +205,31 @@ with st.container():
             else:
                 st.error('Negative')
 
+            # Classification Report
+            classification_rep = classification_report(y_test, y_pred)
+            st.subheader('Classification Report:\n')
+            st.code(classification_rep)
+
+            # # Confusion Matrix Heatmap
+            # st.subheader('Confusion Matrix Heatmap')
+            # fig, ax = plt.subplots()
+            # sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=["Negative", "Positive"], yticklabels=["Negative", "Positive"], ax=ax)
+            # st.pyplot(fig)
+
+            # Menghitung confusion matrix
+            cm = confusion_matrix(y_test, y_pred)
+
+            # Menampilkan confusion matrix dengan plot
+            st.subheader('Confusion Matrix')
+            plt.figure(figsize=(8, 6))
+            sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+            plt.title('Confusion Matrix')
+            plt.xlabel('Predicted')
+            plt.ylabel('Actual')
+            st.pyplot()
+
     elif selected == "Tentang Kami":
-        st.write("##### Mata Kuliah = Pembelajaran Mesin - B") 
-        st.write('##### Kelompok 8')
+        st.write("##### Mata Kuliah = Pengenalan Pola - B") 
+        st.write('##### Kelompok :')
         st.write("1. Hambali Fitrianto (200411100074)")
-        st.write("2. Muhammad Hanif Santoso (200411100078)")
-        
+        st.write("2. Choirinnisa' Fitria (200411100149)")
